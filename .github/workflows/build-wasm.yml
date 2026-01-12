@@ -36,7 +36,7 @@ jobs:
           mkdir -p build-wasm && cd build-wasm
           emcmake cmake .. \
             -DCMAKE_BUILD_TYPE=Release \
-            -DFASTNOISE2_NOISETOOL=OFF \
+            -DFASTNOISE2_TOOLS=OFF \
             -DFASTNOISE2_TESTS=OFF
           emmake make -j$(nproc)
 
