@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'v*'
+      - 'wasm-prebuilt-*'
   workflow_dispatch:
 
 env:
