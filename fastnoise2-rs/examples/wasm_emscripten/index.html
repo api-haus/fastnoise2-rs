@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FastNoise2 WASM Demo (Emscripten)</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #1a1a2e;
+      color: #eee;
+    }
+
+    h1 {
+      color: #4ecca3;
+      margin-bottom: 10px;
+    }
+
+    .info {
+      background: #16213e;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      border-left: 4px solid #4ecca3;
+    }
+
+    .info h2 {
+      margin-top: 0;
+      color: #4ecca3;
+    }
+
+    .controls {
+      background: #16213e;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+
+    .controls label {
+      display: inline-block;
+      width: 100px;
+      margin-right: 10px;
+    }
+
+    .controls input, .controls button {
+      padding: 8px 16px;
+      margin: 5px;
+      border-radius: 4px;
+      border: none;
+    }
+
+    .controls button {
+      background: #4ecca3;
+      color: #0f3460;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    .controls button:hover {
+      background: #45b393;
+    }
+
+    .controls button:disabled {
+      background: #666;
+      cursor: not-allowed;
+    }
+
+    canvas {
+      border: 2px solid #4ecca3;
+      border-radius: 4px;
+      image-rendering: pixelated;
+      background: #000;
+    }
+
+    #status {
+      margin-top: 10px;
+      padding: 10px;
+      background: #16213e;
+      border-radius: 4px;
+      font-family: monospace;
+    }
+
+    .success { color: #4ecca3; }
+    .error { color: #ff6b6b; }
+    .loading { color: #ffd93d; }
+  </style>
+</head>
+<body>
+  <h1>FastNoise2 WASM Demo (Emscripten)</h1>
+
+  <div class="info">
+    <h2>About This Demo</h2>
+    <p>This demonstrates FastNoise2 C++ library compiled to WASM using Emscripten and linked with Rust.</p>
+    <p><strong>Key Technologies:</strong></p>
+    <ul>
+      <li>FastNoise2 (C++) + fastnoise2-rs (Rust FFI bindings)</li>
+      <li>Target: wasm32-unknown-emscripten</li>
+      <li>No wasm-bindgen - uses native Emscripten JS glue</li>
+      <li>WASM SIMD128 enabled for performance</li>
+    </ul>
+  </div>
+
+  <div class="controls">
+    <label>Seed:</label>
+    <input type="number" id="seed" value="1337" />
+
+    <label>Z Offset:</label>
+    <input type="range" id="zOffset" min="0" max="100" value="0" step="0.1" />
+    <span id="zValue">0.0</span>
+
+    <br/>
+
+    <button id="btn2d" onclick="generate2D()" disabled>Generate 2D Noise</button>
+    <button id="btn3d" onclick="generate3D()" disabled>Generate 3D Slice</button>
+    <button id="btnTest" onclick="runTest()" disabled>Run Test</button>
+  </div>
+
+  <canvas id="canvas" width="512" height="512"></canvas>
+
+  <div id="status"><span class="loading">Loading WASM module...</span></div>
+
+  <script src="dist/fastnoise2_wasm.js"></script>
+  <script>
+    let Module = null;
+    let generateNoise2D = null;
+    let generateNoise3DSlice = null;
+    let testFastNoise2 = null;
+    let wasmAlloc = null;
+    let wasmFree = null;
+
+    async function initWasm() {
+      try {
+        // Create the Emscripten module
+        Module = await createFastNoise2Module();
+
+        // Wrap exported functions using Emscripten's cwrap
+        generateNoise2D = Module.cwrap('generate_noise_2d', 'number', ['number', 'number', 'number', 'number']);
+        generateNoise3DSlice = Module.cwrap('generate_noise_3d_slice', 'number', ['number', 'number', 'number', 'number', 'number']);
+        testFastNoise2 = Module.cwrap('test_fastnoise2', 'number', []);
+        wasmAlloc = Module.cwrap('wasm_alloc', 'number', ['number']);
+        wasmFree = Module.cwrap('wasm_free', null, ['number', 'number']);
+
+        // Enable buttons
+        document.getElementById('btn2d').disabled = false;
+        document.getElementById('btn3d').disabled = false;
+        document.getElementById('btnTest').disabled = false;
+
+        document.getElementById('status').innerHTML = '<span class="success">WASM module loaded successfully</span>';
+      } catch (e) {
+        document.getElementById('status').innerHTML = `<span class="error">Failed to load WASM: ${e.message}</span>`;
+        console.error(e);
+      }
+    }
+
+    function generate2D() {
+      if (!Module) {
+        alert('WASM not loaded yet');
+        return;
+      }
+
+      const seed = parseInt(document.getElementById('seed').value);
+      const canvas = document.getElementById('canvas');
+      const ctx = canvas.getContext('2d');
+      const width = canvas.width;
+      const height = canvas.height;
+      const size = width * height;
+
+      // Allocate buffer in WASM memory
+      const bufferPtr = wasmAlloc(size);
+
+      const start = performance.now();
+      const result = generateNoise2D(bufferPtr, width, height, seed);
+      const elapsed = performance.now() - start;
+
+      if (result !== 0) {
+        document.getElementById('status').innerHTML = '<span class="error">Failed to generate noise</span>';
+        wasmFree(bufferPtr, size);
+        return;
+      }
+
+      // Read data from WASM memory (use subarray for memory-growth-safe access)
+      const noiseData = Module.HEAPU8.subarray(bufferPtr, bufferPtr + size);
+
+      // Draw to canvas
+      const imageData = ctx.createImageData(width, height);
+      for (let i = 0; i < size; i++) {
+        const idx = i * 4;
+        const value = noiseData[i];
+        imageData.data[idx] = value;     // R
+        imageData.data[idx + 1] = value; // G
+        imageData.data[idx + 2] = value; // B
+        imageData.data[idx + 3] = 255;   // A
+      }
+
+      ctx.putImageData(imageData, 0, 0);
+
+      // Free WASM memory
+      wasmFree(bufferPtr, size);
+
+      document.getElementById('status').innerHTML =
+        `<span class="success">Generated 2D noise (${width}x${height}) in ${elapsed.toFixed(2)}ms</span>`;
+    }
+
+    function generate3D() {
+      if (!Module) {
+        alert('WASM not loaded yet');
+        return;
+      }
+
+      const seed = parseInt(document.getElementById('seed').value);
+      const zOffset = parseFloat(document.getElementById('zOffset').value);
+      const canvas = document.getElementById('canvas');
+      const ctx = canvas.getContext('2d');
+      const width = canvas.width;
+      const height = canvas.height;
+      const size = width * height;
+
+      const bufferPtr = wasmAlloc(size);
+
+      const start = performance.now();
+      const result = generateNoise3DSlice(bufferPtr, width, height, zOffset, seed);
+      const elapsed = performance.now() - start;
+
+      if (result !== 0) {
+        document.getElementById('status').innerHTML = '<span class="error">Failed to generate noise</span>';
+        wasmFree(bufferPtr, size);
+        return;
+      }
+
+      // Read data from WASM memory (use subarray for memory-growth-safe access)
+      const noiseData = Module.HEAPU8.subarray(bufferPtr, bufferPtr + size);
+
+      const imageData = ctx.createImageData(width, height);
+      for (let i = 0; i < size; i++) {
+        const idx = i * 4;
+        const value = noiseData[i];
+        imageData.data[idx] = value;
+        imageData.data[idx + 1] = value;
+        imageData.data[idx + 2] = value;
+        imageData.data[idx + 3] = 255;
+      }
+
+      ctx.putImageData(imageData, 0, 0);
+      wasmFree(bufferPtr, size);
+
+      document.getElementById('status').innerHTML =
+        `<span class="success">Generated 3D slice at Z=${zOffset.toFixed(1)} in ${elapsed.toFixed(2)}ms</span>`;
+    }
+
+    function runTest() {
+      if (!Module) {
+        alert('WASM not loaded yet');
+        return;
+      }
+
+      const result = testFastNoise2();
+      if (result === -1) {
+        document.getElementById('status').innerHTML =
+          '<span class="error">FastNoise2 test failed!</span>';
+      } else {
+        document.getElementById('status').innerHTML =
+          `<span class="success">FastNoise2 test successful! Magic number: ${result}</span>`;
+      }
+    }
+
+    // Update Z offset display
+    document.getElementById('zOffset').addEventListener('input', (e) => {
+      document.getElementById('zValue').textContent = parseFloat(e.target.value).toFixed(1);
+    });
+
+    // Initialize
+    initWasm();
+  </script>
+</body>
+</html>

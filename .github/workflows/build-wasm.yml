@@ -1,0 +1,68 @@
+name: Build WASM Prebuilt
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+env:
+  EMSCRIPTEN_VERSION: "3.1.68"
+
+jobs:
+  build-wasm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Emscripten
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: ${{ env.EMSCRIPTEN_VERSION }}
+
+      - name: Setup Rust
+        uses: dtolnay/rust-action@stable
+        with:
+          targets: wasm32-unknown-emscripten
+
+      - name: Build FastNoise2 for WASM
+        working-directory: fastnoise2-sys
+        run: |
+          # Build with cmake + emscripten
+          cd build/FastNoise2
+          mkdir -p build-wasm && cd build-wasm
+          emcmake cmake .. \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DFASTNOISE2_NOISETOOL=OFF \
+            -DFASTNOISE2_TESTS=OFF
+          emmake make -j$(nproc)
+
+          # Copy library
+          mkdir -p ../../../wasm-prebuilt
+          cp src/libFastNoise.a ../../../wasm-prebuilt/
+
+      - name: Copy bindings
+        run: |
+          cp fastnoise2-sys/src/bindings_vendored.rs fastnoise2-sys/wasm-prebuilt/bindings.rs
+
+      - name: Create archive
+        run: |
+          cd fastnoise2-sys/wasm-prebuilt
+          tar -czvf fastnoise2-wasm-prebuilt.tar.gz libFastNoise.a bindings.rs
+          ls -lh
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fastnoise2-wasm-prebuilt
+          path: fastnoise2-sys/wasm-prebuilt/fastnoise2-wasm-prebuilt.tar.gz
+
+      - name: Upload to release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: fastnoise2-sys/wasm-prebuilt/fastnoise2-wasm-prebuilt.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
