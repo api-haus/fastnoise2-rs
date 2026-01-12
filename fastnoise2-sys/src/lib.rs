@@ -7,10 +7,14 @@
 //!
 //! ## Setup
 //!
-//! fastnoise2-sys, the underlying bindings for fastnoise2, uses a build script that follows a specific order of preference for compiling and/or linking the FastNoise2 library:
+//! fastnoise2-sys, the underlying bindings for fastnoise2, uses a build script
+//! that follows a specific order of preference for compiling and/or linking the
+//! FastNoise2 library:
 //!
 //! 1. Building from source, if the `build-from-source` feature is enabled.
-//! 2. If the `FASTNOISE2_LIB_DIR` environment variable is set to `/path/to/lib/`, that path will be searched for static `FastNoise` library.
+//! 2. If the `FASTNOISE2_LIB_DIR` environment variable is set to
+//!    `/path/to/lib/`, that path will be searched for static `FastNoise`
+//!    library.
 //! 3. If not set, it falls back to building from source.
 //!
 //! ## Building from Source
@@ -22,8 +26,12 @@
 //!
 //! ## Notes
 //!
-//! - If you prefer not to build from source, precompiled binaries are available for download from the [FastNoise2 Releases](https://github.com/Auburn/FastNoise2/releases).
-//! - The `FASTNOISE2_SOURCE_DIR` environment variable is generally not needed as fastnoise2-sys includes the FastNoise2 source code as a Git submodule. If you need to use a different source directory, set `FASTNOISE2_SOURCE_DIR` to point to the root of the FastNoise2 source code.
-//!
+//! - If you prefer not to build from source, precompiled binaries are available
+//!   for download from the [FastNoise2 Releases](https://github.com/Auburn/FastNoise2/releases).
+//! - The `FASTNOISE2_SOURCE_DIR` environment variable is generally not needed
+//!   as fastnoise2-sys includes the FastNoise2 source code as a Git submodule.
+//!   If you need to use a different source directory, set
+//!   `FASTNOISE2_SOURCE_DIR` to point to the root of the FastNoise2 source
+//!   code.
 #![allow(non_upper_case_globals, non_camel_case_types, non_snake_case)]
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));

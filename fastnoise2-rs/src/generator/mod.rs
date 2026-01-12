@@ -28,33 +28,37 @@ pub mod simplex;
 pub mod value;
 
 pub mod prelude {
-    //! Functions and [`Generator`] re-exports
-    pub use super::{
-        basic::{checkerboard, constant, distance_to_point, position_output, sinewave, white},
-        cellular::{cellular_distance, cellular_lookup, cellular_value},
-        perlin::perlin,
-        simplex::{opensimplex2, opensimplex2s, simplex},
-        value::value,
-        Generator, GeneratorWrapper,
-    };
+  //! Functions and [`Generator`] re-exports
+  pub use super::{
+    basic::{checkerboard, constant, distance_to_point, position_output, sinewave, white},
+    cellular::{cellular_distance, cellular_lookup, cellular_value},
+    perlin::perlin,
+    simplex::{simplex, supersimplex},
+    value::value,
+    Generator, GeneratorWrapper,
+  };
+
+  // Deprecated re-exports for backwards compatibility
+  #[allow(deprecated)]
+  pub use super::simplex::{opensimplex2, opensimplex2s};
 }
 
 pub trait Generator: Clone + Debug {
-    fn build(&self) -> GeneratorWrapper<SafeNode>;
+  fn build(&self) -> GeneratorWrapper<SafeNode>;
 }
 
 impl<T: Generator> Generator for &T {
-    #[cfg_attr(feature = "trace", tracing::instrument(level = "trace"))]
-    fn build(&self) -> GeneratorWrapper<SafeNode> {
-        (*self).build()
-    }
+  #[cfg_attr(feature = "trace", tracing::instrument(level = "trace"))]
+  fn build(&self) -> GeneratorWrapper<SafeNode> {
+    (*self).build()
+  }
 }
 
 impl Generator for SafeNode {
-    #[cfg_attr(feature = "trace", tracing::instrument(level = "trace"))]
-    fn build(&self) -> GeneratorWrapper<SafeNode> {
-        self.clone().into()
-    }
+  #[cfg_attr(feature = "trace", tracing::instrument(level = "trace"))]
+  fn build(&self) -> GeneratorWrapper<SafeNode> {
+    self.clone().into()
+  }
 }
 
 pub trait Hybrid: MemberValue + Clone + Debug {}
@@ -64,91 +68,91 @@ impl Hybrid for f32 {}
 impl<T: Generator> Hybrid for T {}
 
 impl<T: Generator> MemberValue for T {
-    const TYPE: MemberType = MemberType::NodeLookup;
+  const TYPE: MemberType = MemberType::NodeLookup;
 
-    fn apply(
-        &self,
-        node: &mut Node,
-        member: &crate::metadata::Member,
-    ) -> Result<(), crate::FastNoiseError> {
-        node.set(&member.name, self.build().0 .0.as_ref())
-    }
+  fn apply(
+    &self,
+    node: &mut Node,
+    member: &crate::metadata::Member,
+  ) -> Result<(), crate::FastNoiseError> {
+    node.set(&member.name, self.build().0 .0.as_ref())
+  }
 }
 
 #[derive(Clone, Debug)]
 pub struct GeneratorWrapper<T>(pub T);
 
 impl<T: Hybrid> From<T> for GeneratorWrapper<T> {
-    fn from(value: T) -> Self {
-        Self(value)
-    }
+  fn from(value: T) -> Self {
+    Self(value)
+  }
 }
 
 impl<T> std::ops::Deref for GeneratorWrapper<T> {
-    type Target = T;
+  type Target = T;
 
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
+  fn deref(&self) -> &Self::Target {
+    &self.0
+  }
 }
 
 impl<T: Generator> Generator for GeneratorWrapper<T> {
-    #[cfg_attr(feature = "trace", tracing::instrument(level = "trace"))]
-    fn build(&self) -> GeneratorWrapper<SafeNode> {
-        self.0.build()
-    }
+  #[cfg_attr(feature = "trace", tracing::instrument(level = "trace"))]
+  fn build(&self) -> GeneratorWrapper<SafeNode> {
+    self.0.build()
+  }
 }
 
 impl Hybrid for GeneratorWrapper<f32> {}
 
 impl MemberValue for GeneratorWrapper<f32> {
-    const TYPE: MemberType = MemberType::Float;
+  const TYPE: MemberType = MemberType::Float;
 
-    fn apply(
-        &self,
-        node: &mut Node,
-        member: &crate::metadata::Member,
-    ) -> Result<(), crate::FastNoiseError> {
-        self.0.apply(node, member)
-    }
+  fn apply(
+    &self,
+    node: &mut Node,
+    member: &crate::metadata::Member,
+  ) -> Result<(), crate::FastNoiseError> {
+    self.0.apply(node, member)
+  }
 }
 
 #[derive(Clone, Debug)]
 pub enum DistanceFunction {
-    Euclidean,
-    EuclideanSquared,
-    Manhattan,
-    Hybrid,
-    MaxAxis,
+  Euclidean,
+  EuclideanSquared,
+  Manhattan,
+  Hybrid,
+  MaxAxis,
 }
 
 impl Display for DistanceFunction {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            DistanceFunction::Euclidean => f.write_str("Euclidean"),
-            DistanceFunction::EuclideanSquared => f.write_str("EuclideanSquared"),
-            DistanceFunction::Manhattan => f.write_str("Manhattan"),
-            DistanceFunction::Hybrid => f.write_str("Hybrid"),
-            DistanceFunction::MaxAxis => f.write_str("MaxAxis"),
-        }
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    match self {
+      DistanceFunction::Euclidean => f.write_str("Euclidean"),
+      DistanceFunction::EuclideanSquared => f.write_str("EuclideanSquared"),
+      DistanceFunction::Manhattan => f.write_str("Manhattan"),
+      DistanceFunction::Hybrid => f.write_str("Hybrid"),
+      DistanceFunction::MaxAxis => f.write_str("MaxAxis"),
     }
+  }
 }
 
 #[derive(Clone, Debug)]
 pub enum Dimension {
-    X,
-    Y,
-    Z,
-    W,
+  X,
+  Y,
+  Z,
+  W,
 }
 
 impl Display for Dimension {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Dimension::X => f.write_str("X"),
-            Dimension::Y => f.write_str("Y"),
-            Dimension::Z => f.write_str("Z"),
-            Dimension::W => f.write_str("W"),
-        }
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    match self {
+      Dimension::X => f.write_str("X"),
+      Dimension::Y => f.write_str("Y"),
+      Dimension::Z => f.write_str("Z"),
+      Dimension::W => f.write_str("W"),
     }
+  }
 }

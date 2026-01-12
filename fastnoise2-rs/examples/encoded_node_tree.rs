@@ -1,11 +1,13 @@
-// This example illustrates the use of "SafeNode::from_encoded_node_tree" to build a safe tree from an encoded node tree exported by NoiseTool.
+// This example illustrates the use of "SafeNode::from_encoded_node_tree" to
+// build a safe tree from an encoded node tree exported by NoiseTool.
 use std::time::Instant;
 
 use fastnoise2::SafeNode;
 use image::{GrayImage, Luma};
 
 // "Simple Terrain" tree integrated into NoiseTool.
-const DEFAULT_ENCODED_NODE_TREE: &str = "EQACAAAAAAAgQBAAAAAAQBkAEwDD9Sg/DQAEAAAAAAAgQAkAAGZmJj8AAAAAPwEEAAAAAAAAAEBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM3MTD4AMzMzPwAAAAA/";
+const DEFAULT_ENCODED_NODE_TREE: &str =
+    "E@BBZEE@BD8JFgIECArXIzwECiQIw/UoPwkuAAE@BJDQAE@BC@AIEAJBwQDZmYmPwsAAIA/HAMAAHBCBA==";
 const X_SIZE: i32 = 1024;
 const Y_SIZE: i32 = 1024;
 
@@ -23,19 +25,24 @@ fn main() {
 
     let start = Instant::now();
     // SAFETY:
-    // Using `SafeNode::from_encoded_node_tree` is safe unlike manually constructing the node tree with
-    // `Node::from_name` and `Node::set`, as it ensures the nodes and parameters are correctly set by the C++ library's
-    // tools. However, once the node is created, you cannot modify its parameters.
-    // Modifying parameters directly using `Node::set` can introduce the same risks as manually building the node tree.
-    // Issues might arise due to incorrect parameter types, missing members, or other configuration errors.
-    // Ensure that all modifications are valid and consult the FastNoise2 documentation for guidance on parameter types and expected values.
+    // Using `SafeNode::from_encoded_node_tree` is safe unlike manually constructing
+    // the node tree with `Node::from_name` and `Node::set`, as it ensures the
+    // nodes and parameters are correctly set by the C++ library's tools. However,
+    // once the node is created, you cannot modify its parameters.
+    // Modifying parameters directly using `Node::set` can introduce the same risks
+    // as manually building the node tree. Issues might arise due to incorrect
+    // parameter types, missing members, or other configuration errors.
+    // Ensure that all modifications are valid and consult the FastNoise2
+    // documentation for guidance on parameter types and expected values.
+    let step_size = 0.02;
     let min_max = node.gen_uniform_grid_2d(
         &mut noise,
-        -X_SIZE / 2,
-        -Y_SIZE / 2,
-        X_SIZE,
-        Y_SIZE,
-        0.02,
+        -X_SIZE as f32 / 2.0 * step_size, // x_offset
+        -Y_SIZE as f32 / 2.0 * step_size, // y_offset
+        X_SIZE,                           // x_count
+        Y_SIZE,                           // y_count
+        step_size,                        // x_step_size
+        step_size,                        // y_step_size
         1337,
     );
     let elapsed = start.elapsed();
