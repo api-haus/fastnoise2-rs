@@ -109,7 +109,8 @@ impl Node {
                 found: metadata_name,
             }
         })?;
-        let handle = unsafe { fnNewFromMetadata(metadata_id, 0) };
+        // Pass u32::MAX (~0u in C++) for auto-detect SIMD level
+        let handle = unsafe { fnNewFromMetadata(metadata_id, u32::MAX) };
         Ok(Self {
             handle,
             metadata_id,
@@ -124,7 +125,8 @@ impl Node {
     pub fn from_encoded_node_tree(encoded_node_tree: &str) -> Result<Self, FastNoiseError> {
         let cstring =
             CString::new(encoded_node_tree).map_err(FastNoiseError::CStringCreationFailed)?;
-        let node_ptr = unsafe { fnNewFromEncodedNodeTree(cstring.as_ptr(), 0) };
+        // Pass u32::MAX (~0u in C++) for auto-detect SIMD level
+        let node_ptr = unsafe { fnNewFromEncodedNodeTree(cstring.as_ptr(), u32::MAX) };
         if node_ptr.is_null() {
             Err(FastNoiseError::NodeCreationFailed)
         } else {
@@ -187,11 +189,12 @@ impl Node {
         fnGenUniformGrid2D(
             self.handle,
             noise_out.as_mut_ptr(),
-            x_start,
-            y_start,
+            x_start as f32,
+            y_start as f32,
             x_size,
             y_size,
             frequency,
+            frequency, // yStepSize - use same as xStepSize for uniform scaling
             seed,
             min_max.as_mut_ptr(),
         );
@@ -223,13 +226,15 @@ impl Node {
         fnGenUniformGrid3D(
             self.handle,
             noise_out.as_mut_ptr(),
-            x_start,
-            y_start,
-            z_start,
+            x_start as f32,
+            y_start as f32,
+            z_start as f32,
             x_size,
             y_size,
             z_size,
             frequency,
+            frequency, // yStepSize
+            frequency, // zStepSize
             seed,
             min_max.as_mut_ptr(),
         );
@@ -263,15 +268,18 @@ impl Node {
         fnGenUniformGrid4D(
             self.handle,
             noise_out.as_mut_ptr(),
-            x_start,
-            y_start,
-            z_start,
-            w_start,
+            x_start as f32,
+            y_start as f32,
+            z_start as f32,
+            w_start as f32,
             x_size,
             y_size,
             z_size,
             w_size,
             frequency,
+            frequency, // yStepSize
+            frequency, // zStepSize
+            frequency, // wStepSize
             seed,
             min_max.as_mut_ptr(),
         );
@@ -413,6 +421,7 @@ impl Node {
             x_size,
             y_size,
             frequency,
+            frequency, // yStepSize - use same as xStepSize for uniform scaling
             seed,
             min_max.as_mut_ptr(),
         );

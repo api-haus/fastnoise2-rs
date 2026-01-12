@@ -90,18 +90,30 @@ fn build_from_source() {
     println!("cargo:rustc-link-search=native={}", lib64_path.display());
     println!("cargo:rustc-link-lib=static={LIB_NAME}");
 
+    // Copy Utility headers that cmake doesn't install
+    let src_utility = source_path.join("include").join("FastNoise").join("Utility");
+    let dst_utility = out_path.join("include").join("FastNoise").join("Utility");
+    if src_utility.exists() && !dst_utility.exists() {
+        std::fs::create_dir_all(&dst_utility).expect("Failed to create Utility dir");
+        for entry in std::fs::read_dir(&src_utility).expect("Failed to read Utility dir") {
+            let entry = entry.expect("Failed to read entry");
+            let dst = dst_utility.join(entry.file_name());
+            std::fs::copy(entry.path(), &dst).expect("Failed to copy header");
+        }
+    }
+
     generate_bindings(out_path);
 }
 
 fn generate_bindings(source_path: PathBuf) {
     println!("cargo:warning=generating Rust bindings for FastNoise2");
 
-    let header_path = source_path
-        .join("include")
-        .join("FastNoise")
-        .join(HEADER_NAME);
+    let include_path = source_path.join("include").join("FastNoise");
+    let header_path = include_path.join(HEADER_NAME);
     let bindings = bindgen::Builder::default()
         .header(header_path.to_str().unwrap())
+        // Add include path for relative includes like "Utility/Export.h"
+        .clang_arg(format!("-I{}", include_path.to_str().unwrap()))
         // 'bool' exists in C++ but not directly in C, it is named _Bool or you can use 'bool' by including 'stdbool.h'
         .clang_arg("-xc++")
         .generate()
