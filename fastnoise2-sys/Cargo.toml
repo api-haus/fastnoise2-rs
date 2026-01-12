@@ -5,9 +5,8 @@ edition = "2021"
 description = "Rust bindings for FastNoise2."
 keywords = ["noise", "simd", "procedural", "perlin", "bindings"]
 build = "build/main.rs"
-repository.workspace = true
-license.workspace = true
-readme.workspace = true
+repository = "https://github.com/Lemonzyy/fastnoise2-rs"
+license = "MIT"
 
 [build-dependencies]
 bindgen = "0.72"

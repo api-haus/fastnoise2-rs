@@ -187,11 +187,12 @@ impl Node {
         fnGenUniformGrid2D(
             self.handle,
             noise_out.as_mut_ptr(),
-            x_start,
-            y_start,
+            x_start as f32,
+            y_start as f32,
             x_size,
             y_size,
             frequency,
+            frequency, // yStepSize - use same as xStepSize for uniform scaling
             seed,
             min_max.as_mut_ptr(),
         );
@@ -223,13 +224,15 @@ impl Node {
         fnGenUniformGrid3D(
             self.handle,
             noise_out.as_mut_ptr(),
-            x_start,
-            y_start,
-            z_start,
+            x_start as f32,
+            y_start as f32,
+            z_start as f32,
             x_size,
             y_size,
             z_size,
             frequency,
+            frequency, // yStepSize
+            frequency, // zStepSize
             seed,
             min_max.as_mut_ptr(),
         );
@@ -263,15 +266,18 @@ impl Node {
         fnGenUniformGrid4D(
             self.handle,
             noise_out.as_mut_ptr(),
-            x_start,
-            y_start,
-            z_start,
-            w_start,
+            x_start as f32,
+            y_start as f32,
+            z_start as f32,
+            w_start as f32,
             x_size,
             y_size,
             z_size,
             w_size,
             frequency,
+            frequency, // yStepSize
+            frequency, // zStepSize
+            frequency, // wStepSize
             seed,
             min_max.as_mut_ptr(),
         );
@@ -413,6 +419,7 @@ impl Node {
             x_size,
             y_size,
             frequency,
+            frequency, // yStepSize - use same as xStepSize for uniform scaling
             seed,
             min_max.as_mut_ptr(),
         );
